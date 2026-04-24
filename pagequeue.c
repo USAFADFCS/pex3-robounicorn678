@@ -1,7 +1,7 @@
 /** pagequeue.c
  * ===========================================================
- * Name: _______________________, __ ___ 2026
- * Section: CS483 / ____
+ * Name: C2C Charles liermann, 23 APR 2026
+ * Section: CS483 / M4
  * Project: PEX3 - Page Replacement Simulator
  * Purpose: Implementation of the PageQueue ADT — a doubly-linked
  *          list for LRU page replacement.
@@ -15,11 +15,16 @@
 /**
  * @brief Create and initialize a page queue with a given capacity
  */
-PageQueue *pqInit(unsigned int maxSize) {
+PageQueue *pqInit(unsigned int maxSize) 
+{
     PageQueue *pq = (PageQueue *)malloc(sizeof(PageQueue));
-    if (pq == NULL) {
+
+    if (pq == NULL) 
+    {
         return NULL;
     }
+
+
     pq->head = NULL;
     pq->tail = NULL;
     pq->size = 0;
@@ -31,52 +36,74 @@ PageQueue *pqInit(unsigned int maxSize) {
  * @brief Access a page in the queue (simulates a memory reference)
  */
 long pqAccess(PageQueue *pq, unsigned long pageNum) {
-    // Search from tail backwards to find the page (count depth from MRU end)
+    // taverse the DLL from the butt, count the depths, find pagenum, move to tail give back depth
+    // if go to end without finding, add new node to tail, if size exceeds max, evict head, return -1 for fault
     long depth = 0;
     PqNode *current = pq->tail;
     
-    while (current != NULL) {
-        if (current->pageNum == pageNum) {
-            // FOUND: Page hit at depth 'd' from the MRU end
-            // Remove node from its current position
-            if (current->prev != NULL) {
+    while (current != NULL) 
+    {
+
+        if (current->pageNum == pageNum) 
+        {
+            // FOUND IT! page here! move it to back. rearrange whole mess now.
+            if (current->prev != NULL) 
+            {
                 current->prev->next = current->next;
-            } else {
-                // current is the head
+            } 
+            
+            else 
+            {
+                // thing at head. 
                 pq->head = current->next;
             }
             
-            if (current->next != NULL) {
+            if (current->next != NULL) 
+            {
                 current->next->prev = current->prev;
-            } else {
-                // current is the tail (shouldn't happen if depth > 0)
+            } 
+            
+            
+            else 
+            {
+                // thing at tail. bad. no happen physics broken now
                 pq->tail = current->prev;
             }
             
-            // Re-insert at the tail (most recently used)
+            // move popular thing to tail. 
             current->prev = pq->tail;
             current->next = NULL;
             
-            if (pq->tail != NULL) {
+
+
+            if (pq->tail != NULL) 
+            {
                 pq->tail->next = current;
             }
+
             pq->tail = current;
             
-            // If this was the only node, it's both head and tail
-            if (pq->head == NULL) {
+            // lonely thing? be start and end both. do two thing one time
+            if (pq->head == NULL) 
+            {
                 pq->head = current;
             }
             
             return depth;
+
         }
         
         current = current->prev;
+
+
         depth++;
     }
     
-    // PAGE NOT FOUND: Create a new node for this page
+    // page not here, make new thing
     PqNode *newNode = (PqNode *)malloc(sizeof(PqNode));
-    if (newNode == NULL) {
+    
+    if (newNode == NULL) 
+    {
         return -1;
     }
     
@@ -84,31 +111,45 @@ long pqAccess(PageQueue *pq, unsigned long pageNum) {
     newNode->prev = pq->tail;
     newNode->next = NULL;
     
-    // Insert at the tail (most recently used)
-    if (pq->tail != NULL) {
+    // put new thing at tail. 
+    if (pq->tail != NULL) 
+    {
         pq->tail->next = newNode;
     }
+
     pq->tail = newNode;
     
-    // If queue was empty, this is also the head
-    if (pq->head == NULL) {
+    // wasteland queue? now start and end both do it yourself, yay.
+    if (pq->head == NULL) 
+    {
         pq->head = newNode;
     }
     
     pq->size++;
     
-    // If we exceed maxSize, evict the head (LRU page)
-    if (pq->size > pq->maxSize) {
+    // too many things now kill thing at head
+    if (pq->size > pq->maxSize) 
+    {
         PqNode *oldHead = pq->head;
+
         pq->head = oldHead->next;
-        if (pq->head != NULL) {
+
+        if (pq->head != NULL) 
+        {
             pq->head->prev = NULL;
-        } else {
-            // Queue is now empty (shouldn't happen if maxSize >= 1)
+        } 
+        
+        else 
+        {
+            // Queue empty no thought head empty
             pq->tail = NULL;
         }
+
+
         free(oldHead);
         pq->size--;
+    
+    
     }
     
     return -1;
@@ -118,12 +159,17 @@ long pqAccess(PageQueue *pq, unsigned long pageNum) {
  * @brief Free all nodes in the queue and reset it to empty
  */
 void pqFree(PageQueue *pq) {
-    if (pq == NULL) {
+   
+    if (pq == NULL) 
+    {
         return;
     }
     
     PqNode *current = pq->head;
-    while (current != NULL) {
+
+    // walk from head to tail FREE ALL THE MEMORY PLEASE NO MEMOERY LEAKS!!!
+    while (current != NULL)
+    {
         PqNode *temp = current;
         current = current->next;
         free(temp);
@@ -136,26 +182,38 @@ void pqFree(PageQueue *pq) {
  * @brief Print queue contents to stderr for debugging
  */
 void pqPrint(PageQueue *pq) {
-    if (pq == NULL) {
+    
+    if (pq == NULL) 
+    {
         fprintf(stderr, "Queue is NULL\n");
         return;
     }
     
     fprintf(stderr, "Queue (size=%u, maxSize=%u): ", pq->size, pq->maxSize);
     
-    if (pq->head == NULL) {
+    if (pq->head == NULL) 
+    {
         fprintf(stderr, "[empty]\n");
         return;
     }
     
     fprintf(stderr, "[HEAD] ");
     PqNode *current = pq->head;
-    while (current != NULL) {
+    while (current != NULL) 
+    {
         fprintf(stderr, "%lu", current->pageNum);
-        if (current->next != NULL) {
-            fprintf(stderr, " <-> ");
+
+        if (current->next != NULL) 
+        {
+            fprintf(stderr, " <-> "); 
         }
+
+
         current = current->next;
     }
+
+
+
+    
     fprintf(stderr, " [TAIL]\n");
 }

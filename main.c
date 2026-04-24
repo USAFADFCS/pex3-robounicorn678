@@ -1,12 +1,16 @@
 /** main.c
  * ===========================================================
- * Name: _______________________, __ ___ 2026
- * Section: CS483 / ____
+ * Name: C2C Charles liermann, 23 APR 2026
+ * Section: CS483 / M4
  * Project: PEX3 - Page Replacement Simulator
  * Purpose: Reads a BYU binary memory trace file and simulates
  *          LRU page replacement to measure fault rates across
  *          varying frame allocations.
- * Documentation: TBD
+ * Documentation: 
+ * used the following sources for help:
+ * https://www.geeksforgeeks.org/operating-systems/page-replacement-algorithms-in-operating-systems/
+ * https://www.geeksforgeeks.org/computer-organization-architecture/cache-replacement-policies/
+ * https://www.geeksforgeeks.org/operating-systems/virtual-memory-in-operating-system/
  * =========================================================== */
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +25,8 @@ int main(int argc, char **argv) {
     p2AddrTr traceRecord;
 
     // Validate command-line arguments: trace_file frame_size
-    if (argc != 3) {
+    if (argc != 3) 
+    {
         fprintf(stderr, "usage: %s input_byutr_file frame_size\n", argv[0]);
         fprintf(stderr, "\nframe_size:\n\t1: 512 bytes\n\t2: 1KB\n\t3: 2KB\n\t4: 4KB\n");
         exit(1);
@@ -29,14 +34,16 @@ int main(int argc, char **argv) {
 
     // Open the binary trace file
     ifp = fopen(argv[1], "rb");
-    if (ifp == NULL) {
+    if (ifp == NULL) 
+    {
         fprintf(stderr, "cannot open %s for reading\n", argv[1]);
         exit(1);
     }
 
     // Parse and validate frame size selection
     int menuOption = atoi(argv[2]);
-    if (menuOption < 1 || menuOption > 4) {
+    if (menuOption < 1 || menuOption > 4) 
+    {
         fprintf(stderr, "invalid frame size option: %s (must be 1-4)\n", argv[2]);
         fclose(ifp);
         exit(1);
@@ -45,7 +52,8 @@ int main(int argc, char **argv) {
     // Map menu option to page geometry
     int offsetBits = 0;
     int maxFrames = 0;
-    switch (menuOption) {
+    switch (menuOption) 
+    {
         case 1:
             offsetBits = 9;   // 512-byte pages
             maxFrames = 8192;
@@ -67,49 +75,60 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Frame size option %d: %d offset bits, %d max frames, algorithm=LRU\n",
             menuOption, offsetBits, maxFrames);
 
-    // Create PageQueue and allocate faults[] array
-    PageQueue *pq = pqInit(maxFrames);  // Queue with max capacity
-    if (pq == NULL) {
-        fprintf(stderr, "Failed to initialize PageQueue\n");
+    // Okay, time to actually build the thing and hope malloc doesn't laugh at us, please no memory leaks!!!!
+    PageQueue *pq = pqInit(maxFrames);  // MEMORY FITTTTTT
+    if (pq == NULL) 
+    {
+        fprintf(stderr, "Welp, out of memory DUMMY\n");
         fclose(ifp);
         exit(1);
     }
     
     unsigned long *faults = (unsigned long *)calloc(maxFrames + 1, sizeof(unsigned long));
-    if (faults == NULL) {
-        fprintf(stderr, "Failed to allocate faults array\n");
+    if (faults == NULL) 
+    {
+        fprintf(stderr, "Malloc said no...\n");
         pqFree(pq);
         fclose(ifp);
         exit(1);
     }
 
     // Process each memory access from the trace file
-    while (!feof(ifp)) {
+    while (!feof(ifp)) 
+    {
         fread(&traceRecord, sizeof(p2AddrTr), 1, ifp);
 
         // Extract page number by shifting off the offset bits
         unsigned long pageNum = traceRecord.addr >> offsetBits;
         numAccesses++;
 
-        // Call pqAccess() to simulate this memory reference
+        // Pretend this memory access is real and hope it works
         long depth = pqAccess(pq, pageNum);
         
-        if (depth == -1) {
-            // Page was NOT in the queue (fault for ALL frame counts)
+        if (depth == -1) 
+        {
+            // Fault for literally every frame count.
             for (int f = 1; f <= maxFrames; f++) {
                 faults[f]++;
             }
-        } else {
-            // Page was at depth d from the MRU end
-            // Fault for any allocation with fewer than d+1 frames
-            for (long f = 1; f <= depth; f++) {
+
+        } 
+        
+        else 
+        {
+            // Page be chilling in memory at depth d
+            // Time to count faults for any allocation that wasn't big enough to catch it IE with few than d+1 frames
+            for (long f = 1; f <= depth; f++) 
+            {
                 faults[f]++;
             }
+
         }
 
         // Print progress indicator to stderr every PROGRESS_INTERVAL accesses
         // (also prints the last page number seen — useful for early debugging)
-        if ((numAccesses % PROGRESS_INTERVAL) == 0) {
+        if ((numAccesses % PROGRESS_INTERVAL) == 0) 
+        {
             fprintf(stderr, "%lu samples read, last page: %lu\r", numAccesses, pageNum);
         }
 
@@ -121,13 +140,13 @@ int main(int argc, char **argv) {
     printf("Total Accesses:,%lu\n", numAccesses);
     printf("Frames,Missees,Miss Rate\n");
 
-    // Loop from frame count 1 to maxFrames and print each row
-    for (int frameCount = 1; frameCount <= maxFrames; frameCount++) {
-        printf("%d,%lu,%f\n", frameCount, faults[frameCount],
-               (double)faults[frameCount] / (double)numAccesses);
+    //print spreadsheet....each frame count and its magnificent fault count
+    for (int frameCount = 1; frameCount <= maxFrames; frameCount++) 
+    {
+        printf("%d,%lu,%f\n", frameCount, faults[frameCount], (double)faults[frameCount] / (double)numAccesses);
     }
 
-    // Free PageQueue and faults[] array, then close the file
+    // Clean up clean up, everybody do your share, clean up clean up, please let there be no memory leaks ToT
     pqFree(pq);
     free(faults);
     fclose(ifp);
