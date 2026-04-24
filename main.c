@@ -67,10 +67,21 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Frame size option %d: %d offset bits, %d max frames, algorithm=LRU\n",
             menuOption, offsetBits, maxFrames);
 
-    // TODO: Create your PageQueue (call pqInit, which returns a pointer)
-    //       and allocate the faults[] array.  faults[f] will hold the
-    //       total number of page faults that occur when f frames are
-    //       available.  Use calloc so all entries start at zero.
+    // Create PageQueue and allocate faults[] array
+    PageQueue *pq = pqInit(maxFrames);  // Queue with max capacity
+    if (pq == NULL) {
+        fprintf(stderr, "Failed to initialize PageQueue\n");
+        fclose(ifp);
+        exit(1);
+    }
+    
+    unsigned long *faults = (unsigned long *)calloc(maxFrames + 1, sizeof(unsigned long));
+    if (faults == NULL) {
+        fprintf(stderr, "Failed to allocate faults array\n");
+        pqFree(pq);
+        fclose(ifp);
+        exit(1);
+    }
 
     // Process each memory access from the trace file
     while (!feof(ifp)) {
@@ -80,19 +91,27 @@ int main(int argc, char **argv) {
         unsigned long pageNum = traceRecord.addr >> offsetBits;
         numAccesses++;
 
+        // Call pqAccess() to simulate this memory reference
+        long depth = pqAccess(pq, pageNum);
+        
+        if (depth == -1) {
+            // Page was NOT in the queue (fault for ALL frame counts)
+            for (int f = 1; f <= maxFrames; f++) {
+                faults[f]++;
+            }
+        } else {
+            // Page was at depth d from the MRU end
+            // Fault for any allocation with fewer than d+1 frames
+            for (long f = 1; f <= depth; f++) {
+                faults[f]++;
+            }
+        }
+
         // Print progress indicator to stderr every PROGRESS_INTERVAL accesses
         // (also prints the last page number seen — useful for early debugging)
         if ((numAccesses % PROGRESS_INTERVAL) == 0) {
             fprintf(stderr, "%lu samples read, last page: %lu\r", numAccesses, pageNum);
         }
-
-        // TODO: Call pqAccess() to simulate this memory reference.
-        //       It returns:
-        //         -1      -> page was NOT in the queue (fault for ALL frame counts)
-        //         d >= 0  -> page was at depth d from the MRU end
-        //                    (fault for any allocation with fewer than d+1 frames)
-        //
-        //       Update faults[] accordingly.
 
     }
 
@@ -102,12 +121,16 @@ int main(int argc, char **argv) {
     printf("Total Accesses:,%lu\n", numAccesses);
     printf("Frames,Missees,Miss Rate\n");
 
-    // TODO: Loop from frame count 1 to maxFrames and print each row:
-    //       printf("%d,%lu,%f\n", frameCount, faults[frameCount],
-    //              (double)faults[frameCount] / (double)numAccesses);
+    // Loop from frame count 1 to maxFrames and print each row
+    for (int frameCount = 1; frameCount <= maxFrames; frameCount++) {
+        printf("%d,%lu,%f\n", frameCount, faults[frameCount],
+               (double)faults[frameCount] / (double)numAccesses);
+    }
 
-    // TODO: Free your PageQueue and the faults[] array,
-    //       then close the file.
+    // Free PageQueue and faults[] array, then close the file
+    pqFree(pq);
+    free(faults);
+    fclose(ifp);
 
     return 0;
 }
